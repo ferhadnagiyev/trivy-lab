@@ -1,4 +1,7 @@
-FROM node:18.12.0-alpine3.16
+FROM node:22-alpine
+
+# Apply upstream OS patches and update npm internal dependencies at build time
+RUN apk upgrade --no-cache && npm install -g npm@latest
 
 WORKDIR /app
 COPY package*.json ./
