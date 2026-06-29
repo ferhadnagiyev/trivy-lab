@@ -1,0 +1,35 @@
+name: Build and Scan
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # Required to upload SARIF data to the Security tab
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t lab-app:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: lab-app:${{ github.sha }}
+          format: sarif
+          output: ${{ github.workspace }}/trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true    # Skip CVEs that don't have an upstream patch yet
+
+      - name: Upload Trivy results to GitHub Security
+        if: always()             # Ensures logs get uploaded even when the step above fails
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ github.workspace }}/trivy-results.sarif
+          category: trivy
